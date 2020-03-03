@@ -1,4 +1,4 @@
-module ExceptionCausality
+module ExceptionUnwrapping
 
 export unwrap_exception, has_wrapped_exception, unwrap_exception_until,
        unwrap_exception_to_root

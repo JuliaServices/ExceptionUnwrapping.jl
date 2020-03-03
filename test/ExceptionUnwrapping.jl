@@ -1,6 +1,6 @@
 using Test
-using ExceptionCausality
-using ExceptionCausality: UnwrappedExceptionNotFound
+using ExceptionUnwrapping
+using ExceptionUnwrapping: UnwrappedExceptionNotFound
 
 @testset "Wrapped TaskFailedException" begin
     try

@@ -1,5 +1,5 @@
 using Test
 
-@testset "ExceptionCausality.jl" begin
-    include("ExceptionCausality.jl")
+@testset "ExceptionUnwrapping.jl" begin
+    include("ExceptionUnwrapping.jl")
 end
