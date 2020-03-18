@@ -43,8 +43,11 @@ function has_wrapped_exception end
     unwrap_exception(exception_wrapper) -> wrapped_exception
     unwrap_exception(normal_exception) -> normal_exception
 
-Unwraps a wrapped exception by one level. New wrapped exception types should add a method to
-this function.
+    # Add overrides for custom exception types
+    ExceptionUnwrapping.unwrap_exception(e::MyWrappedException) = e.wrapped_exception
+
+Unwraps a wrapped exception by one level. *New wrapped exception types should add a method
+to this function.*
 
 One example of a wrapped exception is the `TaskFailedException`, which wraps an exception
 thrown by a `Task` with a new `Exception` describing the task failure.
@@ -56,7 +59,7 @@ types of exceptions.
 Authors of new wrapped exception types can overload this to indicate what field their
 exception is wrapping, by adding an overload, e.g.:
 ```julia
-unwrap_exception(e::MyWrappedException) = e.wrapped_exception
+ExceptionUnwrapping.unwrap_exception(e::MyWrappedException) = e.wrapped_exception
 ```
 
 This is used in the implementations of the other functions in the module:
@@ -90,7 +93,11 @@ UnwrappedExceptionNotFound{R}(e::E) where {R,E} = UnwrappedExceptionNotFound{R,E
 # Base case is that e -> e
 unwrap_exception(e) = e
 # Add overloads for wrapped exception types to unwrap the exception.
-unwrap_exception(e::Base.TaskFailedException) = e.task.exception
+if VERSION >= v"1.3.0-"
+    # TaskFailedExceptions wrap a failed task, which contains the exception that caused it
+    # to fail. You can unwrap the exception to discover the root cause of the failure.
+    unwrap_exception(e::Base.TaskFailedException) = e.task.exception
+end
 
 function has_wrapped_exception(e, ::Type{T}) where T
     if e isa T
