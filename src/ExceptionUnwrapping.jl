@@ -1,33 +1,13 @@
 module ExceptionUnwrapping
 
+# Document this Module via the README.md file.
+@doc let path = joinpath(dirname(@__DIR__), "README.md")
+    include_dependency(path)
+    read(path, String)
+end ExceptionUnwrapping
+
 export unwrap_exception, has_wrapped_exception, unwrap_exception_until,
        unwrap_exception_to_root
-
-"""
-    unwrap_exception(exception_wrapper) -> wrapped_exception
-    unwrap_exception(normal_exception) -> normal_exception
-
-Unwraps a wrapped exception by one level. New wrapped exception types should add a method to
-this function.
-
-One example of a wrapped exception is the `TaskFailedException`, which wraps an exception
-thrown by a `Task` with a new `Exception` describing the task failure.
-
-It is useful to unwrap the exception to test what kind of exception was thrown in the first
-place, which is useful in case you need different exception handling behavior for different
-types of exceptions.
-
-Authors of new wrapped exception types can overload this to indicate what field their
-exception is wrapping, by adding an overload, e.g.:
-```julia
-unwrap_exception(e::MyWrappedException) = e.wrapped_exception
-```
-
-This is used in the implementations of the other functions in the module:
-- [`has_wrapped_exception(e, ::Type)`](@ref)
-- [`unwrap_exception_to_root(e)`](@ref)
-"""
-function unwrap_exception end
 
 """
     has_wrapped_exception(e, ExceptionType)::Bool
@@ -58,6 +38,32 @@ end
 ```
 """
 function has_wrapped_exception end
+
+"""
+    unwrap_exception(exception_wrapper) -> wrapped_exception
+    unwrap_exception(normal_exception) -> normal_exception
+
+Unwraps a wrapped exception by one level. New wrapped exception types should add a method to
+this function.
+
+One example of a wrapped exception is the `TaskFailedException`, which wraps an exception
+thrown by a `Task` with a new `Exception` describing the task failure.
+
+It is useful to unwrap the exception to test what kind of exception was thrown in the first
+place, which is useful in case you need different exception handling behavior for different
+types of exceptions.
+
+Authors of new wrapped exception types can overload this to indicate what field their
+exception is wrapping, by adding an overload, e.g.:
+```julia
+unwrap_exception(e::MyWrappedException) = e.wrapped_exception
+```
+
+This is used in the implementations of the other functions in the module:
+- [`has_wrapped_exception(e, ::Type)`](@ref)
+- [`unwrap_exception_to_root(e)`](@ref)
+"""
+function unwrap_exception end
 
 """
     unwrap_exception_until(e, ExceptionType)::ExceptionType
@@ -111,3 +117,23 @@ function unwrap_exception_to_root(e)
 end
 
 end # module
+
+# Read names from the user, and sort them by their first letter only
+function get_and_sort_names_by_first_letter(n)
+    try
+        names = [readline() for _ in 1:n]
+        return library_sort(names, by=a->a[1])
+    catch e
+        # Use ExceptionUnwrapping's check to see whether `e` either _is_ a BoundsError _or_
+        # if it is _wrapping_ a BoundsError.
+        if has_wrapped_exception(e, BoundsError)
+            println("Oops! You entered an empty name. Please try again!")
+            # Give the user another shot
+            return get_and_sort_names_by_first_letter(n)
+        else
+            rethrow()  # Unknown error
+        end
+    end
+end
+
+library_sort(args...; kwargs...) = sort(args...; kwargs...)
