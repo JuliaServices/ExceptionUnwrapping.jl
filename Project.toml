@@ -1,6 +1,6 @@
 name = "ExceptionUnwrapping"
 uuid = "460bff9d-24e4-43bc-9d9f-a8973cb893f4"
-authors = []
+authors = ["Nathan Daly <nhdaly@gmail.com>"]
 version = "0.1.0"
 
 [compat]
