@@ -124,23 +124,3 @@ function unwrap_exception_to_root(e)
 end
 
 end # module
-
-# Read names from the user, and sort them by their first letter only
-function get_and_sort_names_by_first_letter(n)
-    try
-        names = [readline() for _ in 1:n]
-        return library_sort(names, by=a->a[1])
-    catch e
-        # Use ExceptionUnwrapping's check to see whether `e` either _is_ a BoundsError _or_
-        # if it is _wrapping_ a BoundsError.
-        if has_wrapped_exception(e, BoundsError)
-            println("Oops! You entered an empty name. Please try again!")
-            # Give the user another shot
-            return get_and_sort_names_by_first_letter(n)
-        else
-            rethrow()  # Unknown error
-        end
-    end
-end
-
-library_sort(args...; kwargs...) = sort(args...; kwargs...)
