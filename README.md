@@ -24,6 +24,34 @@ that caused that Task to fail. Another example is the exception types in
 
 - `unwrap_exception_to_root(normal_exception) -> normal_exception`
 
+## Usage
+
+If your library provides a wrapped exception type, you should register it
+with this package by simply adding a method to `unwrap_exception`:
+```julia
+ExceptionUnwrapping.unwrap_exception(e::MyWrappedException) = e.exception
+```
+
+In client code, you should use `has_wrapped_exception` and `unwrap_exception_until`
+in catch blocks:
+```julia
+try
+    ...
+catch e
+    if has_wrapped_exception(e, BoundsError)
+        be = unwrap_exception_until(e, BoundsError)
+        # ...Use BoundsError...
+    else
+        rethrow()
+    end
+end
+```
+
+Finally, you can improve robustness in client tests via `@test_throws_wrapped`:
+```julia
+@test_throws_wrapped AssertionError my_possibly_multithreaded_function()
+```
+
 ## Motivating Example: Stable Exception Handling
 ### A Problem: Adding Concurrency to a Library Can Break Users' Exception Handling
 As we all start using concurrency more, exception handling can get a bit weird. Julia's
