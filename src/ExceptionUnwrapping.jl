@@ -6,8 +6,8 @@ module ExceptionUnwrapping
     read(path, String)
 end ExceptionUnwrapping
 
-export unwrap_exception, has_wrapped_exception, unwrap_exception_until,
-       unwrap_exception_to_root, @test_throws_wrapped
+export unwrap_exception, has_wrapped_exception, is_wrapped_exception,
+    unwrap_exception_until, unwrap_exception_to_root, @test_throws_wrapped
 
 include("test_throws_wrapped.jl")
 
@@ -42,6 +42,14 @@ end
 function has_wrapped_exception end
 
 """
+    is_wrapped_exception(e)::Bool
+
+Returns true if the given exception instance, `e` is a wrapped exception, such
+that `unwrap_exception(e)` would return something different than `e`.
+"""
+function is_wrapped_exception end
+
+"""
     unwrap_exception(exception_wrapper) -> wrapped_exception
     unwrap_exception(normal_exception) -> normal_exception
 
@@ -73,7 +81,7 @@ function unwrap_exception end
 """
     unwrap_exception_until(e, ExceptionType)::ExceptionType
 
-Unwrap a wrapped exception `e` until
+Recursively unwrap a wrapped exception `e` until reaching an instance of `ExceptionType`.
 """
 function unwrap_exception_until end
 
@@ -105,24 +113,28 @@ function has_wrapped_exception(e, ::Type{T}) where T
     if e isa T
         true
     else
-        e === unwrap_exception(e) ? false : has_wrapped_exception(unwrap_exception(e), T)
+        is_wrapped_exception(e) ? has_wrapped_exception(unwrap_exception(e), T) : false
     end
+end
+
+function is_wrapped_exception(e)
+    return e !== unwrap_exception(e)
 end
 
 function unwrap_exception_until(e, ::Type{T}) where T
     if e isa T
         e
     else
-        if e === unwrap_exception(e)
-            throw(UnwrappedExceptionNotFound{T}(e))
-        else
+        if is_wrapped_exception(e)
             unwrap_exception_until(unwrap_exception(e), T)
+        else
+            throw(UnwrappedExceptionNotFound{T}(e))
         end
     end
 end
 
 function unwrap_exception_to_root(e)
-    e === unwrap_exception(e) ? e : unwrap_exception_to_root(unwrap_exception(e))
+    is_wrapped_exception(e) ? unwrap_exception_to_root(unwrap_exception(e)) : e
 end
 
 end # module

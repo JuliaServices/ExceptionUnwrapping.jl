@@ -14,6 +14,7 @@ if VERSION >= v"1.3.0-"
             @assert (e isa ErrorException) == false
             @assert e isa TaskFailedException
 
+            @test is_wrapped_exception(e)
             @test unwrap_exception(e) isa TaskFailedException
             @test unwrap_exception_to_root(e) isa ErrorException
             @test has_wrapped_exception(e, ErrorException)
@@ -41,6 +42,8 @@ ExceptionUnwrapping.unwrap_exception(e::MyWrappedException) = e.wrapped_exceptio
         @assert (e isa ErrorException) == false
         @assert e isa MyWrappedException
 
+        @test is_wrapped_exception(e2)
+        @test !is_wrapped_exception(e1)
         @test unwrap_exception(e) === e1
         @test unwrap_exception_to_root(e) === e1
         @test has_wrapped_exception(e, ErrorException)
@@ -66,6 +69,9 @@ ExceptionUnwrapping.unwrap_exception(e::MyWrappedException2) = e.exc
     catch e
         @assert e === e3
 
+        @test is_wrapped_exception(e3)
+        @test is_wrapped_exception(e2)
+        @test !is_wrapped_exception(e1)
         @test unwrap_exception(e) === e2
         @test unwrap_exception(unwrap_exception(e)) === e1
         @test unwrap_exception_to_root(e) === e1
