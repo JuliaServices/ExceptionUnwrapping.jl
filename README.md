@@ -14,6 +14,8 @@ that caused that Task to fail. Another example is the exception types in
 
 - `has_wrapped_exception(e, ExceptionType)::Bool`
 
+- `is_wrapped_exception(e)::Bool`
+
 - `unwrap_exception(exception_wrapper) -> wrapped_exception`
 
 - `unwrap_exception(normal_exception) -> normal_exception`
