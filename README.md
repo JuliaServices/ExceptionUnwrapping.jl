@@ -171,7 +171,7 @@ Martin
 
 ### "Wrapped Exceptions" vs "Exception Causes"
 
-In julia, one exception can be "caused by" another exception, if a new exception is thrown
+In julia, one exception can be "caused by" another exception if a new exception is thrown
 from within an `catch`-block (or `finally`-block). This is _not_ the situation that this
 package is addressing.
 
