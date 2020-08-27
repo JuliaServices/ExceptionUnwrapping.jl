@@ -78,7 +78,7 @@ end
     #       But e1 and e2 don't contain any info. they're just this no matter what:
     #       `Test.FallbackTestSetException("There was an error during testing")`
     e1 = try
-        @test_throws_unwrapped ErrorException true
+        @test_throws_wrapped ErrorException true
     catch e e end
 
     e2 = try
