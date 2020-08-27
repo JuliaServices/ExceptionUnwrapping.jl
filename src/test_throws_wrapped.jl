@@ -1,5 +1,5 @@
 import Test  # For @test_throws_wrapped
-using Test: Threw, Fail, Pass, ExecutionResult
+using Test: Returned, Threw, Fail, Pass, ExecutionResult
 
 """
     @test_throws_wrapped exception expr
