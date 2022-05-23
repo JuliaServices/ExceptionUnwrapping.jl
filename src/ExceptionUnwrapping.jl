@@ -103,11 +103,9 @@ UnwrappedExceptionNotFound{R}(e::E) where {R,E} = UnwrappedExceptionNotFound{R,E
 # Base case is that e -> e
 unwrap_exception(e) = e
 # Add overloads for wrapped exception types to unwrap the exception.
-if VERSION >= v"1.3.0-"
-    # TaskFailedExceptions wrap a failed task, which contains the exception that caused it
-    # to fail. You can unwrap the exception to discover the root cause of the failure.
-    unwrap_exception(e::Base.TaskFailedException) = e.task.exception
-end
+# TaskFailedExceptions wrap a failed task, which contains the exception that caused it
+# to fail. You can unwrap the exception to discover the root cause of the failure.
+unwrap_exception(e::Base.TaskFailedException) = e.task.exception
 
 has_wrapped_exception(::T, ::Type{T}) where T = true
 
