@@ -1,7 +1,5 @@
 # ExceptionUnwrapping.jl
 
-[![Build Status](https://travis-ci.com/nhdaly/ExceptionUnwrapping.jl.svg?branch=master)](https://travis-ci.com/nhdaly/ExceptionUnwrapping.jl)
-
 `ExceptionUnwrapping.jl` provides exception handling utilities to allow inspecting and
 unwrapping "wrapped exceptions," by which we mean any Exception type that itself embeds
 another Exception.
