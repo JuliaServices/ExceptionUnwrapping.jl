@@ -70,22 +70,22 @@ end
     @test all(f isa Test.Fail for f in fails[5:end])
 end
 
-# Test un-expected Pass results:
-@testset "Unexpected Pass" begin
-    # This _expected_ an ErrorException, but it passes, so here we ensure that we get a
-    # test failure.
-    # TODO: Not exactly sure how to test this... This is working now upon manual inspection.
-    #       But e1 and e2 don't contain any info. they're just this no matter what:
-    #       `Test.FallbackTestSetException("There was an error during testing")`
-    e1 = try
-        @test_throws_wrapped ErrorException true
-    catch e e end
-
-    e2 = try
-        @test_throws ErrorException true
-    catch e e end
-
-    @test e1 == e2
-end
+# # Test un-expected Pass results:
+# @testset "Unexpected Pass" begin
+#     # This _expected_ an ErrorException, but it passes, so here we ensure that we get a
+#     # test failure.
+#     # TODO: Not exactly sure how to test this... This is working now upon manual inspection.
+#     #       But e1 and e2 don't contain any info. they're just this no matter what:
+#     #       `Test.FallbackTestSetException("There was an error during testing")`
+#     e1 = try
+#         @test_throws_wrapped ErrorException true
+#     catch e e end
+#
+#     e2 = try
+#         @test_throws ErrorException true
+#     catch e e end
+#
+#     @test e1 == e2
+# end
 
 end
