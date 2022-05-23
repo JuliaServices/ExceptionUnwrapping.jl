@@ -109,32 +109,62 @@ if VERSION >= v"1.3.0-"
     unwrap_exception(e::Base.TaskFailedException) = e.task.exception
 end
 
+has_wrapped_exception(::T, ::Type{T}) where T = true
+
+# We have confirmed via Cthulhu and the Allocations profiler that these seem to correctly
+# not be specializing, and not allocating.
+@nospecialize
+
+# Types don't match, do the unrolling, but prevent inference since this happens at runtime
+# and only during exception catch blocks, and might have arbitrarily nested types. And in
+# practice, we've seen julia's inference really struggles here.
+# The inferencebarrier blocks the callee from being inferred until it's actually called at
+# runtime, so that we don't pay for expensive inference if the exception path isn't
+# triggered.
 function has_wrapped_exception(e, ::Type{T}) where T
-    if e isa T
-        true
-    else
-        is_wrapped_exception(e) ? has_wrapped_exception(unwrap_exception(e), T) : false
+    Base.inferencebarrier(_has_wrapped_exception)(e, T)
+end
+function _has_wrapped_exception(e, ::Type{T}) where T
+    while !(e isa T) && is_wrapped_exception(e)
+        e::Any = unwrap_exception(e)
     end
+    return e isa T
 end
 
 function is_wrapped_exception(e)
     return e !== unwrap_exception(e)
 end
 
+@specialize
+
+unwrap_exception_until(e::T, ::Type{T}) where T = e
+
+@nospecialize
+
 function unwrap_exception_until(e, ::Type{T}) where T
+    Base.inferencebarrier(_unwrap_exception_until)(e, T)
+end
+function _unwrap_exception_until(e, ::Type{T}) where T
+    while !(e isa T) && is_wrapped_exception(e)
+        e::Any = unwrap_exception(e)
+    end
     if e isa T
-        e
+        return e
     else
-        if is_wrapped_exception(e)
-            unwrap_exception_until(unwrap_exception(e), T)
-        else
-            throw(UnwrappedExceptionNotFound{T}(e))
-        end
+        throw(UnwrappedExceptionNotFound{T}(e))
     end
 end
 
 function unwrap_exception_to_root(e)
-    is_wrapped_exception(e) ? unwrap_exception_to_root(unwrap_exception(e)) : e
+    Base.inferencebarrier(_unwrap_exception_to_root)(e)
 end
+function _unwrap_exception_to_root(e)
+    while is_wrapped_exception(e)
+        e::Any = unwrap_exception(e)
+    end
+    return e
+end
+
+@specialize
 
 end # module
