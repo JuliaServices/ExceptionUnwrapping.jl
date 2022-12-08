@@ -7,9 +7,11 @@ module ExceptionUnwrapping
 end ExceptionUnwrapping
 
 export unwrap_exception, has_wrapped_exception, is_wrapped_exception,
-    unwrap_exception_until, unwrap_exception_to_root, @test_throws_wrapped
+    unwrap_exception_until, unwrap_exception_to_root, @test_throws_wrapped,
+    summarize_current_exceptions
 
 include("test_throws_wrapped.jl")
+include("exception_summary.jl")
 
 """
     has_wrapped_exception(e, ExceptionType)::Bool
