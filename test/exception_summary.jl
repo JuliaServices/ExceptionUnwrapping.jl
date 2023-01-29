@@ -101,11 +101,11 @@ end
     catch
         str = get_current_exception_string()
         indent = ' '^INDENT_LENGTH
-        error_msg = indent * "AssertionError: 1 == 0\n"
+        error_msg = "AssertionError: 1 == 0\n"
         sep = indent * SEPARATOR * '\n'
         @test occursin("CompositeException (length 3):", str)
         # check that message appears thrice
-        @test occursin(Regex("$error_msg(\n|.)*$sep$error_msg(\n|.)*$sep$error_msg"), str)
+        @test occursin(Regex(" 1. $error_msg(\n|.)*$sep 2. $error_msg(\n|.)*$sep 3. $error_msg"), str)
         threw = true
     end
 
@@ -132,11 +132,73 @@ end
         indent = ' '^INDENT_LENGTH
         error_msg = indent * "AssertionError: 1 == 0\n"
         @test occursin("CompositeException (length 1):", str)
-        @test occursin("\n$(indent)AssertionError: false\n", str)
-        @test occursin("\n$(indent)which caused:\n$(indent)AssertionError: 2 + 2 == 3\n", str)
+        @test occursin("\n 1. AssertionError: false\n", str)
+        @test occursin("\n    which caused:\n    AssertionError: 2 + 2 == 3\n", str)
         @test occursin("\nwhich caused:\nAssertionError: 1 - 1 == 4\n", str)
         threw = true
     end
 
     @test threw
 end
+
+function replace_file_line(str)
+    replace(str, r"@ Main (\S*)" => "@ Main FILE:LINE")
+end
+
+# Exception with multi-line show:
+struct MultiLineException x::Any end
+Base.showerror(io::IO, e::MultiLineException) = print(io, "MultiLineException(\n    $(e.x)\n)")
+
+throw_multiline(x) = throw(MultiLineException(x))
+
+@testset "multiline exception" begin
+    local str
+    try
+        try
+            @sync begin
+                Threads.@spawn try
+                    throw_multiline(0)
+                catch
+                    throw_multiline(1)
+                end
+                Threads.@spawn throw_multiline(2)
+            end
+        catch
+            throw_multiline(3)
+        end
+    catch
+        str = get_current_exception_string()
+    end
+
+    @test replace_file_line(str) === """
+    === EXCEPTION SUMMARY ===
+
+    CompositeException (length 2):
+     1. MultiLineException(
+            0
+        )
+         [1] throw_multiline(x::Int64)
+           @ Main FILE:LINE
+
+        which caused:
+        MultiLineException(
+            1
+        )
+         [1] throw_multiline(x::Int64)
+           @ Main FILE:LINE
+        ----------
+     2. MultiLineException(
+            2
+        )
+         [1] throw_multiline(x::Int64)
+           @ Main FILE:LINE
+
+    which caused:
+    MultiLineException(
+        3
+    )
+     [1] throw_multiline(x::Int64)
+       @ Main FILE:LINE
+    """
+end
+

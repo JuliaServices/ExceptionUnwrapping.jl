@@ -23,35 +23,57 @@ This is particularly helpful in cases where the exception stack is large, the ba
 large, and CompositeExceptions with multiple parts are involved.
 """
 function summarize_current_exceptions(io::IO = Base.stderr, task::Task = current_task())
-    printstyled(io, TITLE, '\n'; color=Base.info_color())
-    _summarize_task_exceptions(io, task, 0)
+    _indent_print(io, TITLE, '\n'; color=Base.info_color())
+    println(io)
+    _summarize_task_exceptions(io, task)
     return nothing
 end
 
-function _indent_print(io::IO, indent::Int, x...; color=:normal)
-    printstyled(io, " "^indent, x...; color=color)
+function _indent_print(io::IO, x...; color=:normal, prefix = nothing)
+    indent = get(io, :indent, 0)
+    if prefix !== nothing
+        ind = max(0, indent - length(prefix))
+        printstyled(io, " "^ind, prefix, x...; color=color)
+    else
+        printstyled(io, " "^indent, x...; color=color)
+    end
 end
 
-function _indent_println(io::IO, indent::Int, x...; color=:normal)
-    _indent_print(io, indent, x..., "\n"; color=color)
+function _indent_println(io::IO, x...; color=:normal, prefix = nothing)
+    _indent_print(io, x..., "\n"; color=color, prefix=prefix)
 end
 
-function _summarize_task_exceptions(io::IO, task::Task, indent::Int)
+function _indent_print(io::IO, io_src::IO; prefix = nothing)
+    indent = get(io, :indent, 0)
+    for (i, line) in enumerate(eachline(io_src))
+        if prefix !== nothing && i == 1
+            ind = max(0, indent - length(prefix))
+            printstyled(io, " "^ind, prefix, line)
+        else
+            i !== 1 && println(io)
+            printstyled(io, " "^indent, line)
+        end
+    end
+end
+
+function _summarize_task_exceptions(io::IO, task::Task; prefix = nothing)
     exception_stack = current_exceptions(task)
     for (i, (e, stack)) in enumerate(exception_stack)
         if i != 1
             # TODO: should the indention increase here?
             println(io)
-            _indent_println(io, indent, "which caused:"; color=Base.error_color())
+            # Clear out the prefix after the first exception being printed
+            prefix = nothing
+            _indent_println(io, "which caused:"; color=Base.error_color())
         end
-        _summarize_exception(io, e, stack, indent)
+        _summarize_exception(io, e, stack, prefix = prefix)
     end
 end
 
 """
-    _summarize_exception(io::IO, e::TaskFailedException, _, indent::Int)
-    _summarize_exception(io::IO, e::CompositeException, stack, indent::Int)
-    _summarize_exception(io::IO, e::Exception, stack, indent::Int)
+    _summarize_exception(io::IO, e::TaskFailedException, _)
+    _summarize_exception(io::IO, e::CompositeException, stack)
+    _summarize_exception(io::IO, e::Exception, stack)
 
 The secret sauce that lets us unwrap TaskFailedExceptions and CompositeExceptions, and
 summarize the actual exception.
@@ -65,25 +87,32 @@ summarized.
 All other exceptions are printed via [`Base.showerror()`](@ref). The first stackframe in the
 backtrace is also printed.
 """
-function _summarize_exception(io::IO, e::TaskFailedException, _, indent::Int)
+function _summarize_exception(io::IO, e::TaskFailedException, _unused_ ; prefix = nothing)
     # recurse down the exception stack to find the original exception
-    _summarize_task_exceptions(io, e.task, indent)
+    _summarize_task_exceptions(io, e.task, prefix = prefix)
 end
-function _summarize_exception(io::IO, e::CompositeException, stack, indent::Int)
-    _indent_println(io, indent, "CompositeException (length ", length(e), "):")
+function _summarize_exception(io::IO, e::CompositeException, stack; prefix = nothing)
+    _indent_println(io, "CompositeException (length ", length(e), "):", prefix = prefix)
+    io = IOContext(io, :indent => get(io, :indent, 0) + INDENT_LENGTH)
     for (i, ex) in enumerate(e.exceptions)
-        _summarize_exception(io, ex, stack, indent + INDENT_LENGTH)
+        _summarize_exception(io, ex, stack; prefix = "$i. ")
         # print something to separate the multiple exceptions wrapped by CompositeException
         if i != length(e.exceptions)
-            _indent_println(io, indent + INDENT_LENGTH, SEPARATOR)
+            _indent_println(io, SEPARATOR)
         end
     end
 end
 # This is the overload that prints the actual exception that occurred.
-function _summarize_exception(io::IO, exc, stack, indent::Int)
+function _summarize_exception(io::IO, exc, stack; prefix = nothing)
+    indent = get(io, :indent, 0)  # used for print_stackframe
+
     # Print the exception.
-    _indent_print(io, indent)
-    Base.showerror(io, exc)
+    exc_io = IOBuffer()
+    Base.showerror(exc_io, exc)
+    seekstart(exc_io)
+    # Print all lines of the exception indented.
+    _indent_print(io, exc_io; prefix = prefix)
+
     println(io)
 
     # Print the source line number of the where the exception occurred.
@@ -101,6 +130,6 @@ function _summarize_exception(io::IO, exc, stack, indent::Int)
     # borrowed from julia/base/errorshow.jl
     modulecolordict = copy(Base.STACKTRACE_FIXEDCOLORS)
     modulecolorcycler = Iterators.Stateful(Iterators.cycle(Base.STACKTRACE_MODULECOLORS))
-    Base.print_stackframe(io, 1, frame, n, indent, modulecolordict, modulecolorcycler)
+    Base.print_stackframe(io, 1, frame, n, indent+1, modulecolordict, modulecolorcycler)
     println(io)
 end
