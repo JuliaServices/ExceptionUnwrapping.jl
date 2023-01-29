@@ -12,10 +12,8 @@ end
 
 # Similar to Base.occursin() except this function accepts a count. Requires `count`
 # allocations, so not the most efficient way to check.
-function occursin_n(
-    needle::Union{AbstractString,AbstractPattern,AbstractChar},
-    haystack::AbstractString,
-    count::Int)
+# (Dropped the type-signature since AbstractPattern isn't available in julia 1.3-)
+function occursin_n(needle, haystack, count::Int)
     for _ in 1:count
         new_haystack = replace(haystack, needle => "", count=1)
         @test haystack != new_haystack
