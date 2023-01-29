@@ -92,9 +92,9 @@ end
         str = get_current_exception_string()
     end
 
-    indent = ' '^INDENT_LENGTH
+    sep_indent = ' '^(INDENT_LENGTH-3)
     error_msg = "AssertionError: 1 == 0\n"
-    sep = indent * SEPARATOR * '\n'
+    sep = sep_indent * SEPARATOR * '\n'
     @test occursin("CompositeException (3 tasks):", str)
     # check that message appears thrice
     @test occursin(Regex(" 1. $error_msg(\n|.)*$sep 2. $error_msg(\n|.)*$sep 3. $error_msg"), str)
@@ -171,7 +171,7 @@ throw_multiline(x) = throw(MultiLineException(x))
         )
          [1] throw_multiline(x::Int64)
            @ Main FILE:LINE
-        ----------
+     --
      2. MultiLineException(
             2
         )

@@ -11,7 +11,7 @@
 #     Cons: possibly hiding intermediate exceptions that might have been helpful to see.
 
 const TITLE = "=== EXCEPTION SUMMARY ==="
-const SEPARATOR = "----------"
+const SEPARATOR = "--"
 const INDENT_LENGTH = 4
 
 """
@@ -93,12 +93,14 @@ function _summarize_exception(io::IO, e::TaskFailedException, _unused_ ; prefix 
 end
 function _summarize_exception(io::IO, e::CompositeException, stack; prefix = nothing)
     _indent_println(io, "CompositeException (", length(e), " tasks):", prefix = prefix)
-    io = IOContext(io, :indent => get(io, :indent, 0) + INDENT_LENGTH)
+    indent = get(io, :indent, 0)
+    io = IOContext(io, :indent => indent + INDENT_LENGTH)
     for (i, ex) in enumerate(e.exceptions)
         _summarize_exception(io, ex, stack; prefix = "$i. ")
         # print something to separate the multiple exceptions wrapped by CompositeException
         if i != length(e.exceptions)
-            _indent_println(io, SEPARATOR)
+            sep_io = IOContext(io, :indent => indent+1)
+            _indent_println(sep_io, SEPARATOR)
         end
     end
 end
