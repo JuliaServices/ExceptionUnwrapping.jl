@@ -15,16 +15,16 @@ const SEPARATOR = "----------"
 const INDENT_LENGTH = 4
 
 """
-    summarize_current_exceptions(io::IO=Base.stderr)
+    summarize_current_exceptions(io::IO = Base.stderr, task = current_task())
 
-Print a summary of the current task's exceptions to `io`.
+Print a summary of the [current] task's exceptions to `io`.
 
 This is particularly helpful in cases where the exception stack is large, the backtraces are
 large, and CompositeExceptions with multiple parts are involved.
 """
-function summarize_current_exceptions(io::IO=Base.stderr)
+function summarize_current_exceptions(io::IO = Base.stderr, task::Task = current_task())
     printstyled(io, TITLE, '\n'; color=Base.info_color())
-    _summarize_task_exceptions(io, current_task(), 0)
+    _summarize_task_exceptions(io, task, 0)
     return nothing
 end
 
@@ -38,8 +38,7 @@ end
 
 function _summarize_task_exceptions(io::IO, task::Task, indent::Int)
     exception_stack = current_exceptions(task)
-    for (i, es) in enumerate(exception_stack)
-        e, stack = es
+    for (i, (e, stack)) in enumerate(exception_stack)
         if i != 1
             # TODO: should the indention increase here?
             println(io)
@@ -88,9 +87,18 @@ function _summarize_exception(io::IO, exc, stack, indent::Int)
     println(io)
 
     # Print the source line number of the where the exception occurred.
-    bt = Base.process_backtrace(stack)
-    # borrowed from julia/base/errorshow.jl
+    # In order to save performance, only process the backtrace up until the first printable
+    # frame. (Julia skips frames from the C runtime when printing backtraces.)
+    local bt
+    for i in eachindex(stack)
+        bt = Base.process_backtrace(stack[i:i])
+        if !isempty(bt)
+            break
+        end
+    end
+    # Now print just the very first frame we've collected:
     (frame, n) = bt[1]
+    # borrowed from julia/base/errorshow.jl
     modulecolordict = copy(Base.STACKTRACE_FIXEDCOLORS)
     modulecolorcycler = Iterators.Stateful(Iterators.cycle(Base.STACKTRACE_MODULECOLORS))
     Base.print_stackframe(io, 1, frame, n, indent, modulecolordict, modulecolorcycler)
