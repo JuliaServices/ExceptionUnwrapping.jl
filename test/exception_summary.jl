@@ -146,14 +146,14 @@ throw_multiline(x) = throw(MultiLineException(x))
         try
             @sync begin
                 Threads.@spawn try
-                    throw_multiline(0)
+                    throw_multiline(0x0)  # use UInt8 for consistent printing in CI
                 catch
-                    throw_multiline(1)
+                    throw_multiline(0x1)
                 end
-                Threads.@spawn throw_multiline(2)
+                Threads.@spawn throw_multiline(0x2)
             end
         catch
-            throw_multiline(3)
+            throw_multiline(0x3)
         end
     catch
         str = get_current_exception_string()
@@ -166,27 +166,27 @@ throw_multiline(x) = throw(MultiLineException(x))
      1. MultiLineException(
             0
         )
-         [1] throw_multiline(x::Int64)
+         [1] throw_multiline(x::UInt8)
            @ Main FILE:LINE
 
         which caused:
         MultiLineException(
             1
         )
-         [1] throw_multiline(x::Int64)
+         [1] throw_multiline(x::UInt8)
            @ Main FILE:LINE
      --
      2. MultiLineException(
             2
         )
-         [1] throw_multiline(x::Int64)
+         [1] throw_multiline(x::UInt8)
            @ Main FILE:LINE
 
     which caused:
     MultiLineException(
         3
     )
-     [1] throw_multiline(x::Int64)
+     [1] throw_multiline(x::UInt8)
        @ Main FILE:LINE
     """
 end
