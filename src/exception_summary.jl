@@ -10,7 +10,7 @@
 #     Pros: less noise
 #     Cons: possibly hiding intermediate exceptions that might have been helpful to see.
 
-const TITLE = "=== THE NEEDLE ==="
+const TITLE = "=== EXCEPTION SUMMARY ==="
 const SEPARATOR = "----------"
 const INDENT_LENGTH = 4
 
