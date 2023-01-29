@@ -11,7 +11,10 @@ export unwrap_exception, has_wrapped_exception, is_wrapped_exception,
     summarize_current_exceptions
 
 include("test_throws_wrapped.jl")
-include("exception_summary.jl")
+
+@static if VERSION >= v"1.7.0-"
+    include("exception_summary.jl")
+end
 
 """
     has_wrapped_exception(e, ExceptionType)::Bool
