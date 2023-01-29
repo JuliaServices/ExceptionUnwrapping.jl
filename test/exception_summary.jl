@@ -92,12 +92,16 @@ end
         str = get_current_exception_string()
     end
 
-    sep_indent = ' '^(INDENT_LENGTH-3)
-    error_msg = "AssertionError: 1 == 0\n"
-    sep = sep_indent * SEPARATOR * '\n'
     @test occursin("CompositeException (3 tasks):", str)
     # check that message appears thrice
-    @test occursin(Regex(" 1. $error_msg(\n|.)*$sep 2. $error_msg(\n|.)*$sep 3. $error_msg"), str)
+    @test occursin(Regex(
+        """
+         1. AssertionError: 1 == 0(\n|.)*
+         --
+         2. AssertionError: 1 == 0(\n|.)*
+         --
+         3. AssertionError: 1 == 0
+        """), str)
 end
 
 @testset "More caused by" begin
