@@ -48,7 +48,7 @@ end
         str = get_current_exception_string()
     end
 
-    @test occursin("CompositeException (length 2):", str)
+    @test occursin("CompositeException (2 tasks):", str)
     @test occursin("AssertionError: false", str)
     @test occursin("AssertionError: !true", str)
 end
@@ -95,7 +95,7 @@ end
     indent = ' '^INDENT_LENGTH
     error_msg = "AssertionError: 1 == 0\n"
     sep = indent * SEPARATOR * '\n'
-    @test occursin("CompositeException (length 3):", str)
+    @test occursin("CompositeException (3 tasks):", str)
     # check that message appears thrice
     @test occursin(Regex(" 1. $error_msg(\n|.)*$sep 2. $error_msg(\n|.)*$sep 3. $error_msg"), str)
 end
@@ -120,7 +120,7 @@ end
 
     indent = ' '^INDENT_LENGTH
     error_msg = indent * "AssertionError: 1 == 0\n"
-    @test occursin("CompositeException (length 1):", str)
+    @test occursin("CompositeException (1 tasks):", str)
     @test occursin("\n 1. AssertionError: false\n", str)
     @test occursin("\n    which caused:\n    AssertionError: 2 + 2 == 3\n", str)
     @test occursin("\nwhich caused:\nAssertionError: 1 - 1 == 4\n", str)
@@ -158,7 +158,7 @@ throw_multiline(x) = throw(MultiLineException(x))
     @test replace_file_line(str) === """
     === EXCEPTION SUMMARY ===
 
-    CompositeException (length 2):
+    CompositeException (2 tasks):
      1. MultiLineException(
             0
         )

@@ -92,7 +92,7 @@ function _summarize_exception(io::IO, e::TaskFailedException, _unused_ ; prefix 
     _summarize_task_exceptions(io, e.task, prefix = prefix)
 end
 function _summarize_exception(io::IO, e::CompositeException, stack; prefix = nothing)
-    _indent_println(io, "CompositeException (length ", length(e), "):", prefix = prefix)
+    _indent_println(io, "CompositeException (", length(e), " tasks):", prefix = prefix)
     io = IOContext(io, :indent => get(io, :indent, 0) + INDENT_LENGTH)
     for (i, ex) in enumerate(e.exceptions)
         _summarize_exception(io, ex, stack; prefix = "$i. ")
