@@ -22,8 +22,7 @@ function occursin_n(needle, haystack, count::Int)
 end
 
 @testset "TaskFailedException" begin
-    threw = false
-
+    local str
     ch = Channel{Nothing}() do ch
         @assert false
         put!(ch, nothing)
@@ -32,16 +31,13 @@ end
         take!(ch)
     catch
         str = get_current_exception_string()
-        @test occursin("AssertionError: false", str)
-        threw = true
     end
 
-    @test threw
+    @test occursin("AssertionError: false", str)
 end
 
 @testset "CompositeException" begin
-    threw = false
-
+    local str
     try
         @sync begin
             Threads.@spawn @assert false
@@ -50,18 +46,15 @@ end
         end
     catch
         str = get_current_exception_string()
-        @test occursin("CompositeException (length 2):", str)
-        @test occursin("AssertionError: false", str)
-        @test occursin("AssertionError: !true", str)
-        threw = true
     end
 
-    @test threw
+    @test occursin("CompositeException (length 2):", str)
+    @test occursin("AssertionError: false", str)
+    @test occursin("AssertionError: !true", str)
 end
 
 @testset "Chained Causes in TaskFailedException" begin
-    threw = false
-
+    local str
     ch = Channel{Nothing}() do ch
         try
             @assert false
@@ -78,17 +71,14 @@ end
         )
     catch
         str = get_current_exception_string()
-        @test occursin("AssertionError: false", str)
-        @test occursin("which caused:\nINSIDE CATCH BLOCK", str)
-        threw = true
     end
 
-    @test threw
+    @test occursin("AssertionError: false", str)
+    @test occursin("which caused:\nINSIDE CATCH BLOCK", str)
 end
 
 @testset "Duplicates" begin
-    threw = false
-
+    local str
     try
         ch = Channel() do ch
             @assert 1 == 0
@@ -100,21 +90,18 @@ end
         end
     catch
         str = get_current_exception_string()
-        indent = ' '^INDENT_LENGTH
-        error_msg = "AssertionError: 1 == 0\n"
-        sep = indent * SEPARATOR * '\n'
-        @test occursin("CompositeException (length 3):", str)
-        # check that message appears thrice
-        @test occursin(Regex(" 1. $error_msg(\n|.)*$sep 2. $error_msg(\n|.)*$sep 3. $error_msg"), str)
-        threw = true
     end
 
-    @test threw
+    indent = ' '^INDENT_LENGTH
+    error_msg = "AssertionError: 1 == 0\n"
+    sep = indent * SEPARATOR * '\n'
+    @test occursin("CompositeException (length 3):", str)
+    # check that message appears thrice
+    @test occursin(Regex(" 1. $error_msg(\n|.)*$sep 2. $error_msg(\n|.)*$sep 3. $error_msg"), str)
 end
 
 @testset "More caused by" begin
-    threw = false
-
+    local str
     try
         try
             @sync begin
@@ -129,16 +116,14 @@ end
         end
     catch
         str = get_current_exception_string()
-        indent = ' '^INDENT_LENGTH
-        error_msg = indent * "AssertionError: 1 == 0\n"
-        @test occursin("CompositeException (length 1):", str)
-        @test occursin("\n 1. AssertionError: false\n", str)
-        @test occursin("\n    which caused:\n    AssertionError: 2 + 2 == 3\n", str)
-        @test occursin("\nwhich caused:\nAssertionError: 1 - 1 == 4\n", str)
-        threw = true
     end
 
-    @test threw
+    indent = ' '^INDENT_LENGTH
+    error_msg = indent * "AssertionError: 1 == 0\n"
+    @test occursin("CompositeException (length 1):", str)
+    @test occursin("\n 1. AssertionError: false\n", str)
+    @test occursin("\n    which caused:\n    AssertionError: 2 + 2 == 3\n", str)
+    @test occursin("\nwhich caused:\nAssertionError: 1 - 1 == 4\n", str)
 end
 
 function replace_file_line(str)
