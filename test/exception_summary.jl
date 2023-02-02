@@ -2,9 +2,7 @@ using Test
 using ExceptionUnwrapping: summarize_current_exceptions, TITLE, INDENT_LENGTH, SEPARATOR
 
 function get_current_exception_string()
-    io = IOBuffer()
-    summarize_current_exceptions(io)
-    str = String(take!(io))
+    str = sprint(summarize_current_exceptions)
     # check this here since it applies to every string
     @test startswith(str, TITLE)
     return str
