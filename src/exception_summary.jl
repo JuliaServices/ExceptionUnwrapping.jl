@@ -111,7 +111,7 @@ function _summarize_exception(io::IO, exc, stack; prefix = nothing)
     # printing just the true exceptions in the summary, not any exception
     # wrappers.
     if is_wrapped_exception(exc)
-        unwrapped = unwrap_exception_to_root(exc)    
+        unwrapped = unwrap_exception(exc)    
         return _summarize_exception(io, unwrapped, stack; prefix)
     end
     # Otherwise, we are at the fully unwrapped exception, now.
