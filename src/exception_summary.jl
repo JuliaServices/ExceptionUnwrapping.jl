@@ -108,9 +108,13 @@ end
 function _summarize_exception(io::IO, exc, stack; prefix = nothing)
     indent = get(io, :indent, 0)  # used for print_stackframe
 
-    # Print the exception.
+    # Start by fully unwrapping the exception, so that we are printing just the true
+    # exceptions in the summary, not any exception wrappers.
+    unwrapped = unwrap_exception_to_root(exc)    
+        
+    # Print the unwrapped exception.
     exc_io = IOBuffer()
-    Base.showerror(exc_io, exc)
+    Base.showerror(exc_io, unwrapped)
     seekstart(exc_io)
     # Print all lines of the exception indented.
     _indent_print(io, exc_io; prefix = prefix)
