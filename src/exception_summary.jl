@@ -106,15 +106,21 @@ function _summarize_exception(io::IO, e::CompositeException, stack; prefix = not
 end
 # This is the overload that prints the actual exception that occurred.
 function _summarize_exception(io::IO, exc, stack; prefix = nothing)
-    indent = get(io, :indent, 0)  # used for print_stackframe
+    # First, check that this exception isn't some other kind of user-defined
+    # wrapped exception. We want to unwrap this layer as well, so that we are
+    # printing just the true exceptions in the summary, not any exception
+    # wrappers.
+    if is_wrapped_exception(exc)
+        unwrapped = unwrap_exception_to_root(exc)    
+        return _summarize_exception(io, unwrapped, stack; prefix)
+    end
+    # Otherwise, we are at the fully unwrapped exception, now.
 
-    # Start by fully unwrapping the exception, so that we are printing just the true
-    # exceptions in the summary, not any exception wrappers.
-    unwrapped = unwrap_exception_to_root(exc)    
+    indent = get(io, :indent, 0)  # used for print_stackframe
         
     # Print the unwrapped exception.
     exc_io = IOBuffer()
-    Base.showerror(exc_io, unwrapped)
+    Base.showerror(exc_io, exc)
     seekstart(exc_io)
     # Print all lines of the exception indented.
     _indent_print(io, exc_io; prefix = prefix)
