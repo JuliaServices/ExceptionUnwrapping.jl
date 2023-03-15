@@ -1,5 +1,6 @@
 using Test
 using ExceptionUnwrapping: summarize_current_exceptions, TITLE, INDENT_LENGTH, SEPARATOR
+import ExceptionUnwrapping
 
 function get_current_exception_string()
     str = sprint(summarize_current_exceptions)
@@ -128,7 +129,7 @@ end
     @test occursin("\nwhich caused:\nAssertionError: 1 - 1 == 4\n", str)
 end
 
-function replace_file_line(str)
+function replace_file_line(str::AbstractString)
     replace(str, r"@ Main (\S*)" => "@ Main FILE:LINE")
 end
 
@@ -188,4 +189,64 @@ throw_multiline(x) = throw(MultiLineException(x))
        @ Main FILE:LINE
     """
 end
+
+
+# Custom Wrapped Exception Types
+struct ContextException
+    inner::Exception
+    context_msg::String
+end
+# This entire string should be *ignored* by get_current_exception_string()
+function Base.showerror(io::IO, e::ContextException)
+    print(io, "Caught $(typeof(e.inner)) while $(e.context_msg):\n")
+    Base.showerror(io, e.inner)
+end
+ExceptionUnwrapping.unwrap_exception(e::ContextException) = e.inner
+
+# (Use uints to have consistent test results across architectures)
+@noinline do_the_assertion1(x) = @assert x === 0x1
+@noinline do_the_assertion2(x) = @assert x === 0x2
+@noinline do_the_assertion3(x) = @assert x === 0x3
+function check_val(x)
+    @sync begin
+        Threads.@spawn try
+            do_the_assertion1(x)
+        catch
+            do_the_assertion2(x)
+        end
+        Threads.@spawn do_the_assertion3(x)
+    end
+end
+
+@testset "wrapped exception" begin
+    str = try
+        try
+            # Do the thing
+            check_val(0x0)
+        catch e
+            rethrow(ContextException(e, "Performing sync-spawn to 'Do the thing.'"))
+        end
+    catch
+        get_current_exception_string()
+    end
+
+    @test replace_file_line(str) === """
+    === EXCEPTION SUMMARY ===
+
+    CompositeException (2 tasks):
+     1. AssertionError: x === 0x01
+         [1] do_the_assertion1(x::UInt8)
+           @ Main FILE:LINE
+
+        which caused:
+        AssertionError: x === 0x02
+         [1] do_the_assertion2(x::UInt8)
+           @ Main FILE:LINE
+     --
+     2. AssertionError: x === 0x03
+         [1] do_the_assertion3(x::UInt8)
+           @ Main FILE:LINE
+    """
+end
+
 
