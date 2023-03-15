@@ -203,9 +203,10 @@ function Base.showerror(io::IO, e::ContextException)
 end
 ExceptionUnwrapping.unwrap_exception(e::ContextException) = e.inner
 
-@noinline do_the_assertion1(x) = @assert x === 1
-@noinline do_the_assertion2(x) = @assert x === 2
-@noinline do_the_assertion3(x) = @assert x === 3
+# (Use uints to have consistent test results across architectures)
+@noinline do_the_assertion1(x) = @assert x === 0x1
+@noinline do_the_assertion2(x) = @assert x === 0x2
+@noinline do_the_assertion3(x) = @assert x === 0x3
 function check_val(x)
     @sync begin
         Threads.@spawn try
@@ -221,7 +222,7 @@ end
     str = try
         try
             # Do the thing
-            check_val(0)
+            check_val(0x0)
         catch e
             rethrow(ContextException(e, "Performing sync-spawn to 'Do the thing.'"))
         end
@@ -233,17 +234,17 @@ end
     === EXCEPTION SUMMARY ===
 
     CompositeException (2 tasks):
-     1. AssertionError: x === 1
-         [1] do_the_assertion1(x::Int64)
+     1. AssertionError: x === 0x01
+         [1] do_the_assertion1(x::UInt8)
            @ Main FILE:LINE
 
         which caused:
-        AssertionError: x === 2
-         [1] do_the_assertion2(x::Int64)
+        AssertionError: x === 0x02
+         [1] do_the_assertion2(x::UInt8)
            @ Main FILE:LINE
      --
-     2. AssertionError: x === 3
-         [1] do_the_assertion3(x::Int64)
+     2. AssertionError: x === 0x03
+         [1] do_the_assertion3(x::UInt8)
            @ Main FILE:LINE
     """
 end
