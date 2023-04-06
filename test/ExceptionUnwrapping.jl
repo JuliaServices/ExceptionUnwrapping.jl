@@ -24,6 +24,11 @@ if VERSION >= v"1.3.0-"
             @test_throws UnwrappedExceptionNotFound{ArgumentError} unwrap_exception_until(e, ArgumentError) isa ErrorException
         end
     end
+    
+    @testset "Wrapped CapturedException" begin
+        e = CapturedException(ErrorException("oh no"), backtrace())
+        @test unwrap_exception(e) == ErrorException("oh no")
+    end
 end
 
 struct MyWrappedException{T}
