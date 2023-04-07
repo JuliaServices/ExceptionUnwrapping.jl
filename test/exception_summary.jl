@@ -121,11 +121,9 @@ end
         str = get_current_exception_string()
     end
 
-    indent = ' '^INDENT_LENGTH
-    error_msg = indent * "AssertionError: 1 == 0\n"
-    @test occursin("CompositeException (1 tasks):", str)
-    @test occursin("\n 1. AssertionError: false\n", str)
-    @test occursin("\n    which caused:\n    AssertionError: 2 + 2 == 3\n", str)
+    @test !occursin("CompositeException", str)
+    @test occursin("\nAssertionError: false\n", str)
+    @test occursin("\nwhich caused:\nAssertionError: 2 + 2 == 3\n", str)
     @test occursin("\nwhich caused:\nAssertionError: 1 - 1 == 4\n", str)
 end
 
