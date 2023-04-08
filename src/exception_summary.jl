@@ -138,10 +138,16 @@ function _summarize_exception(io::IO, exc, stack; prefix = nothing)
         end
     end
     # Now print just the very first frame we've collected:
-    (frame, n) = bt[1]
-    # borrowed from julia/base/errorshow.jl
-    modulecolordict = copy(Base.STACKTRACE_FIXEDCOLORS)
-    modulecolorcycler = Iterators.Stateful(Iterators.cycle(Base.STACKTRACE_MODULECOLORS))
-    Base.print_stackframe(io, 1, frame, n, indent+1, modulecolordict, modulecolorcycler)
-    println(io)
+    if isempty(bt)
+        # A report was received about bt being a 0-element Vector. It's not clear why the
+        # stacktrace is missing, but this should tide us over in the meantime.
+        _indent_println(io, "no stacktrace available")
+    else
+        (frame, n) = bt[1]
+        # borrowed from julia/base/errorshow.jl
+        modulecolordict = copy(Base.STACKTRACE_FIXEDCOLORS)
+        modulecolorcycler = Iterators.Stateful(Iterators.cycle(Base.STACKTRACE_MODULECOLORS))
+        Base.print_stackframe(io, 1, frame, n, indent+1, modulecolordict, modulecolorcycler)
+        println(io)
+    end
 end
