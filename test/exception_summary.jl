@@ -133,9 +133,13 @@ function replace_file_line(str::AbstractString)
     replace(str, r"@ Main (\S*)" => "@ Main FILE:LINE")
 end
 
-# Exception with multi-line show:
+# Exception with multiple lines
 struct MultiLineException x::Any end
-Base.showerror(io::IO, e::MultiLineException) = print(io, "MultiLineException(\n    $(e.x)\n)")
+function Base.showerror(io::IO, e::MultiLineException)
+    print(io, """MultiLineException($(e.x)):
+        error is $(e.x)
+    such long, many line, wow""")
+end
 
 throw_multiline(x) = throw(MultiLineException(x))
 
@@ -162,29 +166,21 @@ throw_multiline(x) = throw(MultiLineException(x))
     === EXCEPTION SUMMARY ===
 
     CompositeException (2 tasks):
-     1. MultiLineException(
-            0
-        )
+     1. MultiLineException(0):
          [1] throw_multiline(x::UInt8)
            @ Main FILE:LINE
 
         which caused:
-        MultiLineException(
-            1
-        )
+        MultiLineException(1):
          [1] throw_multiline(x::UInt8)
            @ Main FILE:LINE
      --
-     2. MultiLineException(
-            2
-        )
+     2. MultiLineException(2):
          [1] throw_multiline(x::UInt8)
            @ Main FILE:LINE
 
     which caused:
-    MultiLineException(
-        3
-    )
+    MultiLineException(3):
      [1] throw_multiline(x::UInt8)
        @ Main FILE:LINE
     """

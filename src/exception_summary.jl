@@ -122,8 +122,9 @@ function _summarize_exception(io::IO, exc, stack; prefix = nothing)
     exc_io = IOBuffer()
     Base.showerror(exc_io, exc)
     seekstart(exc_io)
-    # Print all lines of the exception indented.
-    _indent_print(io, exc_io; prefix = prefix)
+    # Print only first line since Base.showerror() could output an arbitrarily long error.
+    # The summary is intended to only be a short digest of the actual error.
+    _indent_print(io, readline(exc_io); prefix = prefix)
 
     println(io)
 
