@@ -92,6 +92,11 @@ function _summarize_exception(io::IO, e::TaskFailedException, _unused_ ; prefix 
     _summarize_task_exceptions(io, e.task, prefix = prefix)
 end
 function _summarize_exception(io::IO, e::CompositeException, stack; prefix = nothing)
+    # If only one Exception is wrapped, go directly to it to avoid a level of indentation.
+    if length(e) == 1
+        return _summarize_exception(io, only(e.exceptions), stack; prefix = prefix)
+    end
+
     _indent_println(io, "CompositeException (", length(e), " tasks):", prefix = prefix)
     indent = get(io, :indent, 0)
     io = IOContext(io, :indent => indent + INDENT_LENGTH)
@@ -111,13 +116,13 @@ function _summarize_exception(io::IO, exc, stack; prefix = nothing)
     # printing just the true exceptions in the summary, not any exception
     # wrappers.
     if is_wrapped_exception(exc)
-        unwrapped = unwrap_exception(exc)    
+        unwrapped = unwrap_exception(exc)
         return _summarize_exception(io, unwrapped, stack; prefix)
     end
     # Otherwise, we are at the fully unwrapped exception, now.
 
     indent = get(io, :indent, 0)  # used for print_stackframe
-        
+
     # Print the unwrapped exception.
     exc_io = IOBuffer()
     Base.showerror(exc_io, exc)
