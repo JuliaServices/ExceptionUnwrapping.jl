@@ -121,6 +121,7 @@ end
         str = get_current_exception_string()
     end
 
+    # Note: The CompositeException is filtered out, since it only has a single child exception.
     @test !occursin("CompositeException", str)
     @test occursin("\nAssertionError: false\n", str)
     @test occursin("\nwhich caused:\nAssertionError: 2 + 2 == 3\n", str)
