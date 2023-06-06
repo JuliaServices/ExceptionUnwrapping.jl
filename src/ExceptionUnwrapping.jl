@@ -104,6 +104,9 @@ struct UnwrappedExceptionNotFound{RequestedType, ExceptionType} <: Base.Exceptio
 end
 UnwrappedExceptionNotFound{R}(e::E) where {R,E} = UnwrappedExceptionNotFound{R,E}(e)
 
+# We have confirmed via Cthulhu and the Allocations profiler that these seem to correctly
+# not be specializing, and not allocating.
+@nospecialize
 
 # Base case is that e -> e
 unwrap_exception(e) = e
@@ -114,10 +117,6 @@ unwrap_exception(e::Base.TaskFailedException) = e.task.exception
 unwrap_exception(e::Base.CapturedException) = e.ex
 
 has_wrapped_exception(::T, ::Type{T}) where T = true
-
-# We have confirmed via Cthulhu and the Allocations profiler that these seem to correctly
-# not be specializing, and not allocating.
-@nospecialize
 
 # Types don't match, do the unrolling, but prevent inference since this happens at runtime
 # and only during exception catch blocks, and might have arbitrarily nested types. And in
