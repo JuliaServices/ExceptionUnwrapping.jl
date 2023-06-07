@@ -108,46 +108,46 @@ UnwrappedExceptionNotFound{R}(e::E) where {R,E} = UnwrappedExceptionNotFound{R,E
 # not be specializing, and not allocating.
 @nospecialize
 
+# We have confirmed via Cthulhu and the Allocations profiler that these seem to correctly
+# not be specializing, and not allocating.
+# ... For some reason, it seems that we also need to put this attribute on the arguments
+# in the function definitions as well. Without that, it is still specializing. Not sure why.
+@nospecialize
+
 # Base case is that e -> e
-unwrap_exception(e) = e
+unwrap_exception(@nospecialize(e)) = e
 # Add overloads for wrapped exception types to unwrap the exception.
 # TaskFailedExceptions wrap a failed task, which contains the exception that caused it
 # to fail. You can unwrap the exception to discover the root cause of the failure.
 unwrap_exception(e::Base.TaskFailedException) = e.task.exception
 unwrap_exception(e::Base.CapturedException) = e.ex
 
-has_wrapped_exception(::T, ::Type{T}) where T = true
-
-# Types don't match, do the unrolling, but prevent inference since this happens at runtime
-# and only during exception catch blocks, and might have arbitrarily nested types. And in
-# practice, we've seen julia's inference really struggles here.
+# If types don't match, do the unrolling, but prevent inference since this happens at
+# runtime and only during exception catch blocks, and might have arbitrarily nested types.
+# And in practice, we've seen julia's inference really struggles here.
 # The inferencebarrier blocks the callee from being inferred until it's actually called at
 # runtime, so that we don't pay for expensive inference if the exception path isn't
 # triggered.
-function has_wrapped_exception(e, ::Type{T}) where T
+function has_wrapped_exception(@nospecialize(e), @nospecialize(T::Type))
+    e isa T && return true
     Base.inferencebarrier(_has_wrapped_exception)(e, T)
 end
-function _has_wrapped_exception(e, ::Type{T}) where T
+function _has_wrapped_exception(@nospecialize(e), @nospecialize(T::Type))
     while !(e isa T) && is_wrapped_exception(e)
         e::Any = unwrap_exception(e)
     end
     return e isa T
 end
 
-function is_wrapped_exception(e)
+function is_wrapped_exception(@nospecialize(e))
     return e !== unwrap_exception(e)
 end
 
-@specialize
-
-unwrap_exception_until(e::T, ::Type{T}) where T = e
-
-@nospecialize
-
-function unwrap_exception_until(e, ::Type{T}) where T
+function unwrap_exception_until(@nospecialize(e), @nospecialize(T::Type))
+    e isa T && return e
     Base.inferencebarrier(_unwrap_exception_until)(e, T)
 end
-function _unwrap_exception_until(e, ::Type{T}) where T
+function _unwrap_exception_until(@nospecialize(e), @nospecialize(T::Type))
     while !(e isa T) && is_wrapped_exception(e)
         e::Any = unwrap_exception(e)
     end
@@ -158,10 +158,10 @@ function _unwrap_exception_until(e, ::Type{T}) where T
     end
 end
 
-function unwrap_exception_to_root(e)
+function unwrap_exception_to_root(@nospecialize(e))
     Base.inferencebarrier(_unwrap_exception_to_root)(e)
 end
-function _unwrap_exception_to_root(e)
+function _unwrap_exception_to_root(@nospecialize(e))
     while is_wrapped_exception(e)
         e::Any = unwrap_exception(e)
     end
@@ -169,5 +169,19 @@ function _unwrap_exception_to_root(e)
 end
 
 @specialize
+
+function __init__()
+    # Can't use `(Any,)` for unwrap_exception because it has a more-specific subtype variant
+    @assert precompile(unwrap_exception, (ErrorException,))  # nospecialized variant
+    @assert precompile(unwrap_exception, (Base.TaskFailedException,))
+
+    @assert precompile(is_wrapped_exception, (Any,))  # nospecialized
+    @assert precompile(unwrap_exception_to_root, (Any,))  # nospecialized
+    @static if VERSION >= v"1.7.0-"
+        @assert precompile(summarize_current_exceptions, (IO, Task))  # nospecialized
+    end
+
+    @assert precompile(has_wrapped_exception, (Any, Type))  # nospecialized
+end
 
 end # module
