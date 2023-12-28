@@ -137,7 +137,7 @@ function _summarize_exception(io::IO, exc, stack; prefix = nothing)
     # frame. (Julia skips frames from the C runtime when printing backtraces.)
     # A report was received about an error where bt was not defined. Band-aid by
     # initializing it as an empty vector. It's not understood why there was no backtrace.
-    local bt = []
+    bt = []
     for i in eachindex(stack)
         bt = Base.process_backtrace(stack[i:i])
         if !isempty(bt)
