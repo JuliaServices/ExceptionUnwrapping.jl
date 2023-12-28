@@ -135,7 +135,9 @@ function _summarize_exception(io::IO, exc, stack; prefix = nothing)
     # Print the source line number of the where the exception occurred.
     # In order to save performance, only process the backtrace up until the first printable
     # frame. (Julia skips frames from the C runtime when printing backtraces.)
-    local bt
+    # A report was received about an error where bt was not defined. Band-aid by
+    # initializing it as an empty vector. It's not understood why there was no backtrace.
+    local bt = []
     for i in eachindex(stack)
         bt = Base.process_backtrace(stack[i:i])
         if !isempty(bt)
