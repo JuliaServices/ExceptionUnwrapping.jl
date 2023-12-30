@@ -1,7 +1,7 @@
 name = "ExceptionUnwrapping"
 uuid = "460bff9d-24e4-43bc-9d9f-a8973cb893f4"
 authors = ["Nathan Daly <nhdaly@gmail.com>"]
-version = "0.1.9"
+version = "0.1.10"
 
 [deps]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
