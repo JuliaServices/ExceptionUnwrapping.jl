@@ -24,7 +24,7 @@ if VERSION >= v"1.3.0-"
             @test_throws UnwrappedExceptionNotFound{ArgumentError} unwrap_exception_until(e, ArgumentError) isa ErrorException
         end
     end
-    
+
     @testset "Wrapped CapturedException" begin
         e = CapturedException(ErrorException("oh no"), backtrace())
         @test unwrap_exception(e) == ErrorException("oh no")
@@ -87,6 +87,28 @@ ExceptionUnwrapping.unwrap_exception(e::MyWrappedException2) = e.exc
         @test unwrap_exception_until(e, ErrorException) === e1
     end
 end
+
+@testset "allocations" begin
+    t = @async throw(ArgumentError("foo"))
+    try wait(t) catch end
+    TE = TaskFailedException(t)
+
+    # Precompile it once
+    @test ExceptionUnwrapping.has_wrapped_exception(TE, ArgumentError) == true
+    @test ExceptionUnwrapping.unwrap_exception(TE) isa ArgumentError
+
+    # Test no allocations
+    @test @allocated(ExceptionUnwrapping.has_wrapped_exception(TE, ArgumentError)) == 0
+    @test @allocated(ExceptionUnwrapping.unwrap_exception(TE)) == 0
+
+    # Test that there's nothing being compiled, even for novel types
+    @eval struct Foo <: Exception end
+    e = Foo()
+    @test @allocated(ExceptionUnwrapping.has_wrapped_exception(e, ArgumentError)) == 0
+    @test @allocated(ExceptionUnwrapping.has_wrapped_exception(e, Foo)) == 0
+    @test @allocated(ExceptionUnwrapping.unwrap_exception(e)) == 0
+end
+
 
 
 end # module
