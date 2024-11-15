@@ -248,4 +248,29 @@ end
     """
 end
 
+function get_current_exception_string_with_fn(show_fn)
+    io = IOBuffer()
+    summarize_current_exceptions(io; show_fn)
+    str = String(take!(io))
+    # check this here since it applies to every string
+    @test startswith(str, TITLE)
+    return str
+end
 
+@testset "Custom CompositeException" begin
+    foo_fn(io::IO, _) = println(io, "foofoofoo")
+    local str
+    try
+        @sync begin
+            Threads.@spawn @assert false
+            Threads.@spawn @assert !true
+            Threads.@spawn @assert true
+        end
+    catch
+        str = get_current_exception_string_with_fn(foo_fn)
+    end
+
+    @test occursin("CompositeException", str)
+    @test occursin("1. foofoofoo", str)
+    @test occursin("2. foofoofoo", str)
+end
