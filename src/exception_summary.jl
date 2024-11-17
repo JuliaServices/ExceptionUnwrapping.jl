@@ -21,10 +21,12 @@ const INDENT_LENGTH = 4
         show_fn = Base.showerror,
     )
 
-Print a summary of the [current] task's exceptions to `io`.
+Print a summary of the [current] task's exceptions to `io`. Custom implementations of
+`Base.showerror` can be passed in as `show_fn`.
 
 This is particularly helpful in cases where the exception stack is large, the backtraces are
-large, and CompositeExceptions with multiple parts are involved.
+large, and CompositeExceptions with multiple parts are involved. Custom implementations of
+`Base.showerror` can be used to control formatting and content of the exception summary.
 """
 function summarize_current_exceptions(
     io::IO = Base.stderr,
@@ -82,6 +84,7 @@ end
     _summarize_exception(io::IO, e::TaskFailedException, _)
     _summarize_exception(io::IO, e::CompositeException, stack)
     _summarize_exception(io::IO, e::Exception, stack)
+    _summarize_exception(io::IO, e::Exception, stack, show_fn)
 
 The secret sauce that lets us unwrap TaskFailedExceptions and CompositeExceptions, and
 summarize the actual exception.
@@ -92,8 +95,9 @@ _summarize_task_exceptions().
 CompositeException simply wraps a Vector of Exceptions. Each of the individual Exceptions is
 summarized.
 
-All other exceptions are printed via [`Base.showerror()`](@ref). The first stackframe in the
-backtrace is also printed.
+All other exceptions are printed via `show_fn``. The default passed from
+`summarize_current_exceptions` is to use [`Base.showerror()`](@ref). The first
+stackframe in the backtrace is also printed.
 """
 function _summarize_exception(
     io::IO,
