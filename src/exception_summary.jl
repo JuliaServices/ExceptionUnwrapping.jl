@@ -81,9 +81,9 @@ function _summarize_task_exceptions(io::IO, task::Task, show_fn; prefix = nothin
 end
 
 """
-    _summarize_exception(io::IO, e::TaskFailedException, _)
-    _summarize_exception(io::IO, e::CompositeException, stack)
-    _summarize_exception(io::IO, e::Exception, stack)
+    _summarize_exception(io::IO, e::TaskFailedException, _, show_fn)
+    _summarize_exception(io::IO, e::CompositeException, stack, show_fn)
+    _summarize_exception(io::IO, e::Exception, stack, show_fn)
     _summarize_exception(io::IO, e::Exception, stack, show_fn)
 
 The secret sauce that lets us unwrap TaskFailedExceptions and CompositeExceptions, and
