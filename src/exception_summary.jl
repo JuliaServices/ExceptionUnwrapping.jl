@@ -15,17 +15,27 @@ const SEPARATOR = "--"
 const INDENT_LENGTH = 4
 
 """
-    summarize_current_exceptions(io::IO = Base.stderr, task = current_task())
+    summarize_current_exceptions(
+        io::IO = Base.stderr,
+        task = current_task(),
+        show_fn = Base.showerror,
+    )
 
-Print a summary of the [current] task's exceptions to `io`.
+Print a summary of the [current] task's exceptions to `io`. Custom implementations of
+`Base.showerror` can be passed in as `show_fn`.
 
 This is particularly helpful in cases where the exception stack is large, the backtraces are
-large, and CompositeExceptions with multiple parts are involved.
+large, and CompositeExceptions with multiple parts are involved. Custom implementations of
+`Base.showerror` can be used to control formatting and content of the exception summary.
 """
-function summarize_current_exceptions(io::IO = Base.stderr, task::Task = current_task())
+function summarize_current_exceptions(
+    io::IO = Base.stderr,
+    task::Task = current_task();
+    show_fn = Base.showerror,
+)
     _indent_print(io, TITLE, '\n'; color=Base.info_color())
     println(io)
-    _summarize_task_exceptions(io, task)
+    _summarize_task_exceptions(io, task, show_fn)
     return nothing
 end
 
@@ -56,7 +66,7 @@ function _indent_print(io::IO, io_src::IO; prefix = nothing)
     end
 end
 
-function _summarize_task_exceptions(io::IO, task::Task; prefix = nothing)
+function _summarize_task_exceptions(io::IO, task::Task, show_fn; prefix = nothing)
     exception_stack = current_exceptions(task)
     for (i, (e, stack)) in enumerate(exception_stack)
         if i != 1
@@ -66,14 +76,15 @@ function _summarize_task_exceptions(io::IO, task::Task; prefix = nothing)
             prefix = nothing
             _indent_println(io, "which caused:"; color=Base.error_color())
         end
-        _summarize_exception(io, e, stack, prefix = prefix)
+        _summarize_exception(io, e, stack, show_fn; prefix)
     end
 end
 
 """
-    _summarize_exception(io::IO, e::TaskFailedException, _)
-    _summarize_exception(io::IO, e::CompositeException, stack)
-    _summarize_exception(io::IO, e::Exception, stack)
+    _summarize_exception(io::IO, e::TaskFailedException, _, show_fn)
+    _summarize_exception(io::IO, e::CompositeException, stack, show_fn)
+    _summarize_exception(io::IO, e::Exception, stack, show_fn)
+    _summarize_exception(io::IO, e::Exception, stack, show_fn)
 
 The secret sauce that lets us unwrap TaskFailedExceptions and CompositeExceptions, and
 summarize the actual exception.
@@ -84,24 +95,37 @@ _summarize_task_exceptions().
 CompositeException simply wraps a Vector of Exceptions. Each of the individual Exceptions is
 summarized.
 
-All other exceptions are printed via [`Base.showerror()`](@ref). The first stackframe in the
-backtrace is also printed.
+All other exceptions are printed via `show_fn``. The default passed from
+`summarize_current_exceptions` is to use [`Base.showerror()`](@ref). The first
+stackframe in the backtrace is also printed.
 """
-function _summarize_exception(io::IO, e::TaskFailedException, _unused_ ; prefix = nothing)
+function _summarize_exception(
+    io::IO,
+    e::TaskFailedException,
+    _unused_,
+    show_fn;
+    prefix = nothing,
+)
     # recurse down the exception stack to find the original exception
-    _summarize_task_exceptions(io, e.task, prefix = prefix)
+    _summarize_task_exceptions(io, e.task, show_fn; prefix)
 end
-function _summarize_exception(io::IO, e::CompositeException, stack; prefix = nothing)
+function _summarize_exception(
+    io::IO,
+    e::CompositeException,
+    stack,
+    show_fn;
+    prefix = nothing,
+)
     # If only one Exception is wrapped, go directly to it to avoid a level of indentation.
     if length(e) == 1
-        return _summarize_exception(io, only(e.exceptions), stack; prefix = prefix)
+        return _summarize_exception(io, only(e.exceptions), stack, show_fn; prefix)
     end
 
     _indent_println(io, "CompositeException (", length(e), " tasks):", prefix = prefix)
     indent = get(io, :indent, 0)
     io = IOContext(io, :indent => indent + INDENT_LENGTH)
     for (i, ex) in enumerate(e.exceptions)
-        _summarize_exception(io, ex, stack; prefix = "$i. ")
+        _summarize_exception(io, ex, stack, show_fn; prefix = "$i. ")
         # print something to separate the multiple exceptions wrapped by CompositeException
         if i != length(e.exceptions)
             sep_io = IOContext(io, :indent => indent+1)
@@ -110,14 +134,14 @@ function _summarize_exception(io::IO, e::CompositeException, stack; prefix = not
     end
 end
 # This is the overload that prints the actual exception that occurred.
-function _summarize_exception(io::IO, exc, stack; prefix = nothing)
+function _summarize_exception(io::IO, exc, stack, show_fn; prefix = nothing)
     # First, check that this exception isn't some other kind of user-defined
     # wrapped exception. We want to unwrap this layer as well, so that we are
     # printing just the true exceptions in the summary, not any exception
     # wrappers.
     if is_wrapped_exception(exc)
         unwrapped = unwrap_exception(exc)
-        return _summarize_exception(io, unwrapped, stack; prefix)
+        return _summarize_exception(io, unwrapped, stack, show_fn; prefix)
     end
     # Otherwise, we are at the fully unwrapped exception, now.
 
@@ -125,7 +149,7 @@ function _summarize_exception(io::IO, exc, stack; prefix = nothing)
 
     # Print the unwrapped exception.
     exc_io = IOBuffer()
-    Base.showerror(exc_io, exc)
+    show_fn(exc_io, exc)
     seekstart(exc_io)
     # Print all lines of the exception indented.
     _indent_print(io, exc_io; prefix = prefix)
