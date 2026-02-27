@@ -23,6 +23,12 @@ Test Passed
 """
 macro test_throws_wrapped(extype, ex)
     orig_ex = Expr(:inert, ex)
+    # current_exceptions() was added in Julia 1.7; Threw requires it on nightly.
+    threw_call = if VERSION >= v"1.7.0-"
+        :(Threw(_e, current_exceptions(), $(QuoteNode(__source__))))
+    else
+        :(Threw(_e, nothing, $(QuoteNode(__source__))))
+    end
     result = quote
         try
             Returned($(esc(ex)), nothing, $(QuoteNode(__source__)))
@@ -30,7 +36,7 @@ macro test_throws_wrapped(extype, ex)
             if $(esc(extype)) != InterruptException && _e isa InterruptException
                 rethrow()
             end
-            Threw(_e, nothing, $(QuoteNode(__source__)))
+            $threw_call
         end
     end
     Base.remove_linenums!(result)
