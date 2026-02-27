@@ -156,29 +156,22 @@ function _summarize_exception(io::IO, exc, stack, show_fn; prefix = nothing)
 
     println(io)
 
-    # Print the source line number of the where the exception occurred.
-    # In order to save performance, only process the backtrace up until the first printable
-    # frame. (Julia skips frames from the C runtime when printing backtraces.)
-    # A report was received about an error where bt was not defined. Band-aid by
-    # initializing it as an empty vector. It's not understood why there was no backtrace.
-    bt = []
-    for i in eachindex(stack)
-        bt = Base.process_backtrace(Any[stack[i]])
-        if !isempty(bt)
-            break
-        end
-    end
+    # Print the source line number of where the exception occurred.
+    # Use stacktrace() directly rather than process_backtrace() to handle
+    # backtrace format changes across Julia versions (e.g. nightly changed
+    # the element type to Vector{Union{Ptr{Nothing}, Base.InterpreterIP}}).
+    frames = Base.StackTraces.stacktrace(stack)
     # Now print just the very first frame we've collected:
-    if isempty(bt)
+    if isempty(frames)
         # A report was received about bt being a 0-element Vector. It's not clear why the
         # stacktrace is missing, but this should tide us over in the meantime.
         _indent_println(io, "no stacktrace available")
     else
-        (frame, n) = bt[1]
+        frame = frames[1]
         # borrowed from julia/base/errorshow.jl
         modulecolordict = copy(Base.STACKTRACE_FIXEDCOLORS)
         modulecolorcycler = Iterators.Stateful(Iterators.cycle(Base.STACKTRACE_MODULECOLORS))
-        Base.print_stackframe(io, 1, frame, n, indent+1, modulecolordict, modulecolorcycler)
+        Base.print_stackframe(io, 1, frame, 1, indent+1, modulecolordict, modulecolorcycler)
         println(io)
     end
 end
