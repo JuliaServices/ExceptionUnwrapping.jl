@@ -115,7 +115,7 @@ unwrap_exception(e) = e
 # to fail. You can unwrap the exception to discover the root cause of the failure.
 unwrap_exception(e::Base.TaskFailedException) = e.task.exception
 unwrap_exception(e::Base.CapturedException) = e.ex
-unwrap_exception(e::Base.CompositeException) = length(e) == 1 ? only(e) : e
+unwrap_exception(e::Base.CompositeException) = length(e) == 1 ? first(e) : e
 
 has_wrapped_exception(::T, ::Type{T}) where T = true
 
