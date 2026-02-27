@@ -163,7 +163,7 @@ function _summarize_exception(io::IO, exc, stack, show_fn; prefix = nothing)
     # initializing it as an empty vector. It's not understood why there was no backtrace.
     bt = []
     for i in eachindex(stack)
-        bt = Base.process_backtrace(stack[i:i])
+        bt = Base.process_backtrace(Any[stack[i]])
         if !isempty(bt)
             break
         end
