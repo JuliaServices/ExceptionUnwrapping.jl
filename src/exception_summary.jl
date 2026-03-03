@@ -168,10 +168,18 @@ function _summarize_exception(io::IO, exc, stack, show_fn; prefix = nothing)
         _indent_println(io, "no stacktrace available")
     else
         frame = frames[1]
-        # borrowed from julia/base/errorshow.jl
-        modulecolordict = copy(Base.STACKTRACE_FIXEDCOLORS)
-        modulecolorcycler = Iterators.Stateful(Iterators.cycle(Base.STACKTRACE_MODULECOLORS))
-        Base.print_stackframe(io, 1, frame, 1, indent+1, modulecolordict, modulecolorcycler)
-        println(io)
+        # sprint(show, frame) gives "func(args) at file:line" -- extract just the signature.
+        # We avoid calling Base.print_stackframe directly since its signature is unstable
+        # across Julia versions.
+        func_sig = first(split(sprint(show, frame), " at "; limit=2))
+        mod_name = try
+            linfo = frame.linfo
+            linfo isa Core.MethodInstance ?
+                string(linfo.def isa Method ? linfo.def.module : linfo.def) : "Main"
+        catch
+            "Main"
+        end
+        _indent_println(io, " [1] " * func_sig)
+        _indent_println(io, "   @ " * mod_name * " " * string(frame.file) * ":" * string(frame.line))
     end
 end
