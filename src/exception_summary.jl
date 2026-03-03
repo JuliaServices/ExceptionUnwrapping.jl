@@ -156,18 +156,24 @@ function _summarize_exception(io::IO, exc, stack, show_fn; prefix = nothing)
 
     println(io)
 
-    # Print the source line number of where the exception occurred.
-    # Use stacktrace() directly rather than process_backtrace() to handle
-    # backtrace format changes across Julia versions (e.g. nightly changed
-    # the element type to Vector{Union{Ptr{Nothing}, Base.InterpreterIP}}).
-    frames = Base.StackTraces.stacktrace(stack)
-    # Now print just the very first frame we've collected:
-    if isempty(frames)
+    # Find the first Julia (non-C) frame lazily, one frame at a time, for performance.
+    # Calling stacktrace() on the full backtrace symbolizes every frame at once, which
+    # can be very expensive for large stacktraces. Instead, we use StackTraces.lookup()
+    # on each element individually — it accepts both Ptr{Nothing} and
+    # Base.InterpreterIP (the element types used across Julia versions including nightly).
+    frame = nothing
+    for ptr in stack
+        looked_up = Base.StackTraces.lookup(ptr)
+        if !isempty(looked_up) && !looked_up[1].from_c
+            frame = looked_up[1]
+            break
+        end
+    end
+    if frame === nothing
         # A report was received about bt being a 0-element Vector. It's not clear why the
         # stacktrace is missing, but this should tide us over in the meantime.
         _indent_println(io, "no stacktrace available")
     else
-        frame = frames[1]
         # sprint(show, frame) gives "func(args) at file:line" -- extract just the signature.
         # We avoid calling Base.print_stackframe directly since its signature is unstable
         # across Julia versions.
