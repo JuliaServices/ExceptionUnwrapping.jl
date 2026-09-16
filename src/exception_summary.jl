@@ -156,29 +156,36 @@ function _summarize_exception(io::IO, exc, stack, show_fn; prefix = nothing)
 
     println(io)
 
-    # Print the source line number of the where the exception occurred.
-    # In order to save performance, only process the backtrace up until the first printable
-    # frame. (Julia skips frames from the C runtime when printing backtraces.)
-    # A report was received about an error where bt was not defined. Band-aid by
-    # initializing it as an empty vector. It's not understood why there was no backtrace.
-    bt = []
-    for i in eachindex(stack)
-        bt = Base.process_backtrace(stack[i:i])
-        if !isempty(bt)
+    # Find the first Julia (non-C) frame lazily, one frame at a time, for performance.
+    # Calling stacktrace() on the full backtrace symbolizes every frame at once, which
+    # can be very expensive for large stacktraces. Instead, we use StackTraces.lookup()
+    # on each element individually — it accepts both Ptr{Nothing} and
+    # Base.InterpreterIP (the element types used across Julia versions including nightly).
+    frame = nothing
+    for ptr in stack
+        looked_up = Base.StackTraces.lookup(ptr)
+        if !isempty(looked_up) && !looked_up[1].from_c
+            frame = looked_up[1]
             break
         end
     end
-    # Now print just the very first frame we've collected:
-    if isempty(bt)
+    if frame === nothing
         # A report was received about bt being a 0-element Vector. It's not clear why the
         # stacktrace is missing, but this should tide us over in the meantime.
         _indent_println(io, "no stacktrace available")
     else
-        (frame, n) = bt[1]
-        # borrowed from julia/base/errorshow.jl
-        modulecolordict = copy(Base.STACKTRACE_FIXEDCOLORS)
-        modulecolorcycler = Iterators.Stateful(Iterators.cycle(Base.STACKTRACE_MODULECOLORS))
-        Base.print_stackframe(io, 1, frame, n, indent+1, modulecolordict, modulecolorcycler)
-        println(io)
+        # sprint(show, frame) gives "func(args) at file:line" -- extract just the signature.
+        # We avoid calling Base.print_stackframe directly since its signature is unstable
+        # across Julia versions.
+        func_sig = first(split(sprint(show, frame), " at "; limit=2))
+        mod_name = try
+            linfo = frame.linfo
+            linfo isa Core.MethodInstance ?
+                string(linfo.def isa Method ? linfo.def.module : linfo.def) : "Main"
+        catch
+            "Main"
+        end
+        _indent_println(io, " [1] " * func_sig)
+        _indent_println(io, "   @ " * mod_name * " " * string(frame.file) * ":" * string(frame.line))
     end
 end
