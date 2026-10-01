@@ -29,6 +29,36 @@ if VERSION >= v"1.3.0-"
         e = CapturedException(ErrorException("oh no"), backtrace())
         @test unwrap_exception(e) == ErrorException("oh no")
     end
+
+    @testset "CompositeException with single exception" begin
+        inner = ErrorException("inner")
+        e = CompositeException([inner])
+        @test is_wrapped_exception(e)
+        @test unwrap_exception(e) === inner
+        @test unwrap_exception_to_root(e) === inner
+        @test has_wrapped_exception(e, ErrorException)
+        @test has_wrapped_exception(e, CompositeException)
+        @test !has_wrapped_exception(e, ArgumentError)
+        @test unwrap_exception_until(e, ErrorException) === inner
+    end
+
+    @testset "CompositeException with multiple exceptions" begin
+        e = CompositeException([ErrorException("a"), ArgumentError("b")])
+        @test !is_wrapped_exception(e)
+        @test unwrap_exception(e) === e
+    end
+
+    @testset "CompositeException from @sync with single task" begin
+        try
+            @sync @async error("inner")
+        catch e
+            @test e isa CompositeException
+            @test is_wrapped_exception(e)
+            @test has_wrapped_exception(e, ErrorException)
+            @test unwrap_exception_to_root(e) isa ErrorException
+            @test (unwrap_exception_to_root(e)::ErrorException).msg === "inner"
+        end
+    end
 end
 
 struct MyWrappedException{T}
