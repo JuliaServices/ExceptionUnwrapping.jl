@@ -93,12 +93,12 @@ end
     try wait(t) catch end
     TE = TaskFailedException(t)
 
-    # Precompile it once
+    # Warm the exception walk once.
     @test ExceptionUnwrapping.has_wrapped_exception(TE, ArgumentError) == true
     @test ExceptionUnwrapping.unwrap_exception(TE) isa ArgumentError
 
-    # Test no allocations
-    @test @allocated(ExceptionUnwrapping.has_wrapped_exception(TE, ArgumentError)) == 0
+    # Block form measures the operation without forcing argument reboxing on Julia 1.13+.
+    @test @allocated(begin ExceptionUnwrapping.has_wrapped_exception(TE, ArgumentError) end) == 0
     @test @allocated(ExceptionUnwrapping.unwrap_exception(TE)) == 0
 
     # Test that there's nothing being compiled, even for novel types
@@ -107,6 +107,17 @@ end
     @test @allocated(ExceptionUnwrapping.has_wrapped_exception(e, ArgumentError)) == 0
     @test @allocated(ExceptionUnwrapping.has_wrapped_exception(e, Foo)) == 0
     @test @allocated(ExceptionUnwrapping.unwrap_exception(e)) == 0
+
+    # Dynamic type requests must reuse the warmed code for a newly introduced exception.
+    @eval struct PayloadException <: Exception
+        message::String
+    end
+    boxed = Ref{Any}(PayloadException("new exception type"))
+    requested = Ref{Type}(PayloadException)
+    @test boxed[] isa PayloadException
+    @test requested[] === PayloadException
+    @test @allocated(begin ExceptionUnwrapping.has_wrapped_exception(boxed[], requested[]) end) == 0
+    @test ExceptionUnwrapping.has_wrapped_exception(boxed[], requested[])
 end
 
 
