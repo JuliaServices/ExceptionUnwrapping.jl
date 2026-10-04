@@ -8,6 +8,9 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -20,19 +23,28 @@ jobs:
         arch:
           - x86
         include:
-          # test macOS and Windows with latest Julia only
-          - os: macOS-latest
+          - os: ubuntu-latest
             arch: x64
-            version: 1
+            version: '1'
+          - os: ubuntu-latest
+            arch: x64
+            version: nightly
+          # test macOS and Windows with latest Julia only
+          - os: macos-15-intel
+            arch: x64
+            version: '1'
+          - os: macos-latest
+            arch: aarch64
+            version: '1'
           - os: windows-latest
             arch: x64
-            version: 1
+            version: '1'
           - os: windows-latest
             arch: x86
-            version: 1
+            version: '1'
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
@@ -49,9 +61,11 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v7
         with:
-          file: lcov.info
+          files: lcov.info
+          fail_ci_if_error: true
+          use_oidc: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 #   docs:
 #     name: Documentation
 #     runs-on: ubuntu-latest

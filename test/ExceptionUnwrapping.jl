@@ -24,7 +24,7 @@ if VERSION >= v"1.3.0-"
             @test_throws UnwrappedExceptionNotFound{ArgumentError} unwrap_exception_until(e, ArgumentError) isa ErrorException
         end
     end
-    
+
     @testset "Wrapped CapturedException" begin
         e = CapturedException(ErrorException("oh no"), backtrace())
         @test unwrap_exception(e) == ErrorException("oh no")
@@ -87,6 +87,39 @@ ExceptionUnwrapping.unwrap_exception(e::MyWrappedException2) = e.exc
         @test unwrap_exception_until(e, ErrorException) === e1
     end
 end
+
+@testset "allocations" begin
+    t = @async throw(ArgumentError("foo"))
+    try wait(t) catch end
+    TE = TaskFailedException(t)
+
+    # Warm the exception walk once.
+    @test ExceptionUnwrapping.has_wrapped_exception(TE, ArgumentError) == true
+    @test ExceptionUnwrapping.unwrap_exception(TE) isa ArgumentError
+
+    # Block form measures the operation without forcing argument reboxing on Julia 1.13+.
+    @test @allocated(begin ExceptionUnwrapping.has_wrapped_exception(TE, ArgumentError) end) == 0
+    @test @allocated(ExceptionUnwrapping.unwrap_exception(TE)) == 0
+
+    # Test that there's nothing being compiled, even for novel types
+    @eval struct Foo <: Exception end
+    e = Foo()
+    @test @allocated(ExceptionUnwrapping.has_wrapped_exception(e, ArgumentError)) == 0
+    @test @allocated(ExceptionUnwrapping.has_wrapped_exception(e, Foo)) == 0
+    @test @allocated(ExceptionUnwrapping.unwrap_exception(e)) == 0
+
+    # Dynamic type requests must reuse the warmed code for a newly introduced exception.
+    @eval struct PayloadException <: Exception
+        message::String
+    end
+    boxed = Ref{Any}(PayloadException("new exception type"))
+    requested = Ref{Type}(PayloadException)
+    @test boxed[] isa PayloadException
+    @test requested[] === PayloadException
+    @test @allocated(begin ExceptionUnwrapping.has_wrapped_exception(boxed[], requested[]) end) == 0
+    @test ExceptionUnwrapping.has_wrapped_exception(boxed[], requested[])
+end
+
 
 
 end # module
