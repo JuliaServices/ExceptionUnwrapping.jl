@@ -9,6 +9,24 @@ function get_current_exception_string()
     return str
 end
 
+@testset "summary output destination" begin
+    mktemp() do path, stdout_io
+        summary_io = IOBuffer()
+        redirect_stdout(stdout_io) do
+            try
+                throw(ArgumentError("summary destination probe"))
+            catch
+                summarize_current_exceptions(summary_io)
+            end
+        end
+        seekstart(stdout_io)
+        @test isempty(read(stdout_io, String))
+        summary = String(take!(summary_io))
+        @test startswith(summary, TITLE)
+        @test occursin("ArgumentError: summary destination probe", summary)
+    end
+end
+
 # Similar to Base.occursin() except this function accepts a count. Requires `count`
 # allocations, so not the most efficient way to check.
 # (Dropped the type-signature since AbstractPattern isn't available in julia 1.3-)

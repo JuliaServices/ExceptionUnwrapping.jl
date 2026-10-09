@@ -136,7 +136,7 @@ function _summarize_exception(
     end
 end
 # This is the overload that prints the actual exception that occurred.
-function _summarize_exception(io::IO, @nospecialize(exc), stack, show_fn; prefix = nothing)
+@nospecializeinfer function _summarize_exception(io::IO, @nospecialize(exc), stack, show_fn; prefix = nothing)
     # First, check that this exception isn't some other kind of user-defined
     # wrapped exception. We want to unwrap this layer as well, so that we are
     # printing just the true exceptions in the summary, not any exception
