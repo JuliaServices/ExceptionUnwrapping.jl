@@ -25,7 +25,7 @@ jobs:
         include:
           # test macOS and Windows with latest Julia only
           - os: macOS-latest
-            arch: x64
+            arch: aarch64
             version: 1
           - os: windows-latest
             arch: x64
